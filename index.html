@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+    <title>聊天室</title>
+</head>
+<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.js"></script>
+<!-- <script src="./demo.js"></script> -->
+<script crossorigin="anonymous" integrity="sha512-oFOCo2/3DtjrJG4N27BjSLQWoiBv171sK6a+JiWjp/7agxC2nCUP358AqzxkBUb5jX8g6CYLPdSKQTbC0weCwA==" src="http://lib.baomitu.com/socket.io/3.1.1/socket.io.js"></script>
+<body>
+    <div id="page">
+        <header>
+            <h1 class="title">
+                聊天室
+                <span id="number">（房间:0人）</span>
+            </h1>
+        </header>
+        <!-- 视图区 -->
+        <nav>
+            <div class="record">
+            </div>
+        </nav>
+        <!-- 操作区 -->
+        <aside>
+            <div class="aside">
+                <span href="javascript:;" id="choosefile" style="cursor: pointer;">
+                    文件
+                    <input type="file" name="" id="file" style="display: none;">
+                </span>
+            </div>
+        </aside>
+        <!-- 输入区 -->
+        <footer>
+            <div id="inpbox">
+                <textarea id="content" contenteditable="true" placeholder="请输入内容"></textarea>
+                <button>发送</button>
+            </div>
+        </footer>
+        <div id="loginbox">
+            <input type="text" placeholder="请输入昵称" class="nick">
+            <button class="login" id="login">备注</button>
+        </div>
+        <div id="users" style="position: absolute;left:15%;right:15%;top:10vh;z-index:1000;overflow:auto;font-size: 12px;color:#000;max-height:60vh;background: #fff;border-radius: 10px;display:none;">
+        </div>
+    </div>
+</body>
+<script>
+    var send= document.getElementsByTagName('button')[0]
+    var login= document.getElementById('login')
+    var nick= document.getElementsByClassName('nick')[0]
+    var loginbox=document.getElementById('loginbox')
+    var page=document.getElementById('page')
+    var content=document.getElementById('content')
+    var record= document.getElementsByClassName('record')[0]
+    var number=document.getElementById('number')
+    var usersbox=document.getElementById('users')
+    var choosefile=document.getElementById('choosefile')
+    var file=document.getElementById('file')
+    const colorList=['#90EE90','#C6E2FF','#FF6A6A','#FFFF00','#00FF00','#FFDAB9','#E6E6FA','#6495ED','#00BFFF','#00FFFF','#7FFFD4',
+                        '#98FB98',
+                    ]
+    const socket = io();
+    socket.on("parter", function (parter) {
+        console.log(parter)
+        if(!parter){
+            number.innerHTML='（房间:0人）'
+        }else{
+            localStorage.setItem('users',JSON.stringify(parter.split(',').filter(s=>!!s)))
+            var num=parter.split(',').length-1
+            number.innerHTML='（房间:'+num+'人）'
+            usersbox.innerHTML=''
+            JSON.parse(localStorage.getItem('users')).forEach((s,index)=>{
+                var op=document.createElement('p')
+                op.setAttribute('style',"background:"+colorList[index]+";height: 50px;line-height:50px;text-align: center;color:#fff;")
+                op.innerHTML=s
+                usersbox.appendChild(op)
+            })
+        }
+    })
+    socket.on("file",function(data){
+        console.log('要下载的文件是')
+        console.log(data)
+        var oa=document.createElement('a')
+        oa.setAttribute('download',data.download)
+        oa.href=data.content
+        document.body.appendChild(oa)
+        oa.click()
+        document.body.removeChild(oa)
+    })
+    socket.on("getMsg", function (data) {
+        var arr=data.slice(0,data.length-1).split('-')
+        if(arr.length==1 && arr[0]=='') return
+        var list=arr.map(s=>{
+            return JSON.parse(s)
+        })
+        var tempArray=[]
+        var nickColorObj={}
+        list.forEach((s,index)=>{
+            var date=new Date(s.time)
+            var Y=date.getFullYear()
+            var M=date.getMonth()+1
+            var D=date.getDate()
+            var hh=date.getHours()
+            var mm=date.getMinutes()
+            var ss=date.getSeconds()
+            hh=hh<10?('0'+hh):(''+hh)
+            mm=mm<10?('0'+mm):(''+mm)
+            ss=ss<10?('0'+ss):(''+ss)
+            s.time=Y+'年'+M+'月'+D+'日'+' '+hh+':'+mm+':'+ss
+            s.isSelf=s.nick==localStorage.getItem('nick')?true:false
+            
+            if(tempArray.indexOf(s.nick)==-1){
+                tempArray.push(s.nick)
+            }
+        })
+        tempArray.forEach((s,index)=>{
+            nickColorObj[s]=colorList[index]
+        })
+        record.innerHTML=''
+        list.forEach(item=>{
+            var obox=document.createElement("div")
+            obox.setAttribute('class',item.isSelf?'selfbox':'otherbox')
+            record.appendChild(obox)
+
+            var otime=document.createElement("div")
+            otime.setAttribute('class','time')
+            otime.innerHTML=item.time
+
+            var oselfright=document.createElement("div")
+            oselfright.setAttribute('class',item.isSelf?'self':'other')
+
+            var otext=document.createElement("div")
+            otext.setAttribute('class','text')
+            otext.setAttribute('style',item.download?'text-decoration:underline;':'')
+            otext.innerHTML=item.content
+            otext.onclick=item.download?function(e){
+                var text=e.target.innerText
+                console.log(text)
+                socket.emit("download", {
+                    content:text
+                })
+            }:null
+
+            var onickshow=document.createElement("div")
+            onickshow.setAttribute('class','nickshow')
+            onickshow.innerHTML=item.nick
+            if(item.isSelf){
+                oselfright.appendChild(otext)
+                oselfright.appendChild(onickshow)
+            }else{
+                oselfright.appendChild(onickshow)
+                oselfright.appendChild(otext)
+            }
+            
+            obox.style.color=nickColorObj[item.nick]
+            obox.appendChild(otime)
+            obox.appendChild(oselfright)
+        })
+        record.scrollTo(0,parseInt(record.scrollHeight-record.offsetHeight))
+    })
+
+    // TODO
+    // localStorage.removeItem('nick','')
+
+    // 解析服务器返回的数据
+    function parse(obj){
+        return JSON.parse(obj)
+    }
+
+    function sendto(){
+        socket.emit("send", {
+            nick:localStorage.getItem('nick'),
+            time:Date.now(),
+            content:content.value,
+            download:false
+        })
+        content.placeholder='请输入内容'
+        content.value=''
+    }
+
+    // 判断是否已经注册
+    loginbox.style.display=localStorage.getItem('nick')?'none':'flex'
+
+    if(localStorage.getItem('nick')){
+        socket.emit("logintime", {
+            nick:localStorage.getItem('nick'),
+            time:Date.now()
+        })
+    }
+    
+    // 发送
+    send.addEventListener('click',()=>{
+        sendto()
+    })
+    document.onkeydown=function(e){
+        if(e.keyCode==13){
+            if(localStorage.getItem('nick')){
+                sendto() 
+            }
+        }
+    }
+    // 登录
+    login.addEventListener('click',()=>{
+        var name=nick.value.replace(/ /g,'').replace(/,/g,'')
+        if(!name){
+            alert('请输入昵称')
+            return
+        }
+        socket.emit("login", {
+            nick:name
+        })
+        loginbox.style.display='none'
+        socket.emit("logintime", {
+            nick:name,
+            time:Date.now()
+        })
+        localStorage.setItem('nick',nick.value)
+    })
+    //查看人数
+    number.addEventListener('click',()=>{
+        usersbox.innerHTML=''
+        JSON.parse(localStorage.getItem('users')).forEach((s,index)=>{
+            var op=document.createElement('p')
+            op.setAttribute('style',"background:"+colorList[index]+";height: 50px;line-height:50px;text-align: center;color:#000;font-weight:600;")
+            op.innerHTML=s
+            usersbox.appendChild(op)
+        })
+        usersbox.style.display=usersbox.style.display=='none'?'block':'none'
+    })
+    
+    choosefile.addEventListener('click',()=>{
+        file.click()
+    })
+
+    file.onchange=function(e){
+        console.log(file.files[0])
+        // if(file.files[0].size>1000000){
+        //     content.placeholder='文件过大，请压缩后上传！'
+        //     return
+        // }
+        var reader = new FileReader();
+        reader.readAsDataURL(file.files[0]);//发起异步请求
+        var result=null
+        reader.onload = function(){
+            //读取完成后，数据保存在对象的result属性中
+            // console.log()
+            //将二进制字符串转为base64字符串
+            socket.emit("send", {
+                nick:localStorage.getItem('nick'),
+                time:Date.now(),
+                content:this.result,
+                download:file.files[0].name
+            })
+            content.placeholder='请输入内容'
+            content.value=''
+        }
+    }
+</script>
+<style>
+    *{
+        margin:0;
+        padding:0;
+    }
+    html,body{
+        width: 100vw;
+        height: 100vh;
+    }
+    #page{
+        color: #fff;
+        height: 100%;
+        background-color: rgb(36, 36, 36);
+        background-image: url('http://127.0.0.1:3000/getImage');
+        background-repeat: no-repeat ;
+        background-position-x: center;
+        background-position-y: center;
+        position: relative;
+    }
+    #loginbox{
+        position: absolute;
+        left: 0;
+        top:0;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .nick,.login{
+        height: 30px;
+        outline: none;
+    }
+    .login{
+        height: 34px;
+    }
+    header{
+        position:absolute;
+        left: 0;
+        right: 0;
+    }
+    nav,aside,footer{
+        position: absolute;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #choosefile{
+        width: 50px;
+        height: 25px;
+        font-size: 14px;
+        border-radius: 4px;
+        line-height: 25px;
+        background: red;
+    }
+    .aside{
+        padding:15px;
+        display: flex;
+        justify-content: start; 
+    }
+    nav{
+        top:10vh;
+        height: 60vh;
+    }
+    .time{
+        width: 100%;
+        font-size: 12px;
+        text-align: center;
+        height: 20px;
+        line-height: 20px;
+        float: left;
+    }
+    .self,.other{
+        width: 80%;
+        min-height: 30px;
+        border-radius: 5px 0 0 5px;
+        margin-bottom:10px;
+        background: rgba(255, 255, 255, .2);
+        display: flex;
+        line-height: 14px;
+        font-size: 12px;
+        float: right;
+    }
+    .other{
+        float: left;
+        border-radius: 0 5px 5px 0;
+    }
+    .text{
+        width: 70%;
+        padding:10px;
+    }
+    .nickshow{
+        width: 30%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #00008B;
+    }
+    aside{
+        top:70vh;
+        height: 8vh;
+    }
+    footer{
+        top:78vh;
+        height: 22vh;
+    }
+    textarea{
+        padding:10px;
+        width: 82%;
+        height:calc(19vh - 20px);
+        outline: none;
+        border-radius: 5px 0 0 5px;
+        border: none;
+    }
+    button{
+        width: 18%;
+        height: 19vh;
+        outline: none;
+        border: none;
+        color: #fff;
+        background: rgb(182, 15, 15);
+        border-radius: 0 5px 5px 0;
+    }
+    .title{
+        height: 10vh;
+        line-height: 10vh;
+        text-align: center;
+        background: rgb(36, 36, 36);
+        color: #fff;
+        position: relative;
+    }
+    #number{
+        font-size: 12px;
+        color:salmon;
+        position: absolute;
+        cursor: pointer;
+    }
+    /* PC，Ipad端样式 */
+    @media screen and (min-width: 500px) {
+        .record{
+            width: 70%;
+            height: 100%;
+            overflow: scroll;
+        }      
+        .record::-webkit-scrollbar {
+                display: none;
+        }
+        .aside{
+            width: 70%;
+            text-align: center;
+        }
+        #inpbox{
+            z-index: 100;
+            color: #fff;
+            width: 70%;
+            height: 100%;
+            background-color: #555;
+            padding:0 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #users{
+            position: absolute;
+            background: #fff;
+            font-size: 12px;
+        }
+    }
+    /* 移动端样式 */
+    @media screen and (max-width: 500px) {
+        .record{
+            width: 100%;
+            height: 100%;
+            overflow: scroll;
+        }
+        .aside{
+            width: 100%;
+            text-align: center;
+        }
+        #inpbox{
+            z-index: 100;
+            color: #fff;
+            width: 100%;
+            height: 100%;
+            background-color: #555;
+            padding:0 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    }   
+    
+</style>
+</html>
