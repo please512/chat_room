@@ -124,8 +124,8 @@ io.on("connection", (socket) => {
         fs.readFile('./files.txt','utf-8',(err,files)=>{
             console.log(files.toString().split('&').filter(s=>!!s))
             files.toString().split('&').filter(s=>!!s).forEach((s)=>{
-                if(JSON.parse(s).download==data.content){
-                    socket.emit("file",JSON.parse(s));
+                if(JSON.parse(s.trim()).download==data.content){
+                    socket.emit("file",JSON.parse(s.trim()));
                 }
             })
         })
@@ -138,8 +138,8 @@ io.on("connection", (socket) => {
                     var temparr=all.split('-').filter(s=>!!s)
                     console.log(temparr)
                     var needsave=[]
-                    if(temparr.length>10){
-                        needsave=temparr.splice(temparr.length-10,temparr.length-1)
+                    if(temparr.length>30){
+                        needsave=temparr.splice(temparr.length-30,temparr.length-1)
                     }else{
                         needsave=temparr
                     }
