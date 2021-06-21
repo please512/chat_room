@@ -17,5 +17,5 @@
    * 本项目为聊天室通信小工具，目前需求包含发送接收文字、文件，查看房间人员信息，定时清理长久未登录人员信息，支持暂存最多30条聊天记录，意在解决内网开发时带来的诸多不便，本项目可启动聊天服务，其他计算机可访问服务端IP+端口访问该服务。
 
 #### 项目预览
-![Image text](https://raw.githubusercontent.com/please512/chat_room/master/chat_room/pic2.png)
-![Image text](https://raw.githubusercontent.com/please512/chat_room/master/chat_room/pic1.png)
+![Image text](https://raw.githubusercontent.com/please512/chat_room/master/pic2.png)
+![Image text](https://raw.githubusercontent.com/please512/chat_room/master/pic1.png)
